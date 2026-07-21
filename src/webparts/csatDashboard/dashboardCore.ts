@@ -392,7 +392,7 @@ export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void 
 
   // ---- worksheet helpers ---------------------------------------------------
   function sanitizeSheetName(name: string, used: Set<string>): string {
-    let s = ('' + (name || 'Unknown')).replace(/[\\\/\?\*\[\]:]/g, '-').trim().slice(0, 31) || 'Sheet';
+    let s = ('' + (name || 'Unknown')).replace(/[\\/?*[\]:]/g, '-').trim().slice(0, 31) || 'Sheet';
     const base = s; let i = 2;
     while (used.has(s.toLowerCase())) { const sfx = ' (' + i + ')'; s = base.slice(0, 31 - sfx.length) + sfx; i++; }
     used.add(s.toLowerCase());
