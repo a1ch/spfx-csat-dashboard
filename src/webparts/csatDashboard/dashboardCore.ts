@@ -136,8 +136,8 @@ export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void 
     const tf = el('techFilter') as HTMLSelectElement;
     const prevB = bf.value, prevT = tf.value;
     [bf, tf].forEach((sel) => { while (sel.children.length > 1) { sel.removeChild(sel.lastChild as Node); } });
-    Array.from(new Set(allItems.map((d) => d.branch).filter(Boolean))).sort().forEach((v) => { const o = document.createElement('option'); o.value = v; o.textContent = v; bf.appendChild(o); });
-    Array.from(new Set(allItems.map((d) => d.technician).filter(Boolean))).sort().forEach((v) => { const o = document.createElement('option'); o.value = v; o.textContent = v; tf.appendChild(o); });
+    Array.from(new Set(allItems.map((d) => d.branch).filter(Boolean))).sort().forEach((v: string) => { const o = document.createElement('option'); o.value = v; o.textContent = v; bf.appendChild(o); });
+    Array.from(new Set(allItems.map((d) => d.technician).filter(Boolean))).sort().forEach((v: string) => { const o = document.createElement('option'); o.value = v; o.textContent = v; tf.appendChild(o); });
     bf.value = prevB; tf.value = prevT;
   }
 

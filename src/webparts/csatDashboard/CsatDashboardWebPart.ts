@@ -23,8 +23,6 @@ const XLSX_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xls
 
 export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDashboardWebPartProps> {
 
-  private _librariesLoaded: boolean = false;
-
   protected async onInit(): Promise<void> {
     await super.onInit();
     // Load Chart.js and SheetJS (xlsx) once, from CDN. If a tenant blocks the
@@ -32,9 +30,8 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
     try {
       await SPComponentLoader.loadScript(CHARTJS_URL);
       await SPComponentLoader.loadScript(XLSX_URL);
-      this._librariesLoaded = true;
-    } catch (e) {
-      this._librariesLoaded = false;
+    } catch {
+      // CDN unreachable — dashboard still renders; charts/xlsx degrade.
     }
   }
 
