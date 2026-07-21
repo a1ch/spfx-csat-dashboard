@@ -4,7 +4,10 @@ module.exports = {
   parserOptions: { tsconfigRootDir: __dirname },
   rules: {
     // Purely stylistic; we keep explicit annotations for readability.
-    '@typescript-eslint/no-inferrable-types': 'off'
+    '@typescript-eslint/no-inferrable-types': 'off',
+    // The ExcelJS / Chart.js interop in the export code is heavily dynamic;
+    // typing it fully would add noise without real safety.
+    '@typescript-eslint/no-explicit-any': 'off'
   },
   overrides: [
     {

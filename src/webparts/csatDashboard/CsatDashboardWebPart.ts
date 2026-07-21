@@ -19,7 +19,7 @@ export interface ICsatDashboardWebPartProps {
 }
 
 const CHARTJS_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
-const XLSX_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const EXCELJS_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
 
 export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDashboardWebPartProps> {
 
@@ -29,7 +29,7 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
     // CDN the dashboard still renders — charts/export just degrade gracefully.
     try {
       await SPComponentLoader.loadScript(CHARTJS_URL);
-      await SPComponentLoader.loadScript(XLSX_URL);
+      await SPComponentLoader.loadScript(EXCELJS_URL);
     } catch {
       // CDN unreachable — dashboard still renders; charts/xlsx degrade.
     }

@@ -1,10 +1,10 @@
 import { ICsatItem } from './CsatDataService';
 
-// Chart.js and SheetJS are loaded from CDN by the web part and attached to
+// Chart.js and ExcelJS are loaded from CDN by the web part and attached to
 // window, so we reference them as ambient globals here.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare const Chart: any;
-declare const XLSX: any;
+declare const ExcelJS: any;
 
 export interface IDashboardOptions {
   fetchItems: () => Promise<ICsatItem[]>;
@@ -29,10 +29,16 @@ const EXPORT_FIELDS: string[] = [
   'exemplary', 'improveSuggestion', 'comments', 'serviceNotes', 'Created'
 ];
 
+// Free-text columns that hold long verbatim answers — fixed readable width + wrap.
+const WRAP_FIELDS: string[] = ['improvementAreas', 'exemplary', 'improveSuggestion', 'comments', 'serviceNotes'];
+const WRAP_WIDTH: number = 40;
+const XL_DARK: string = 'FF1A3A5C';
+const XL_LIGHT: string = 'FFE6F1FB';
+const AXIS_5: any = { min: 0, max: 5, ticks: { stepSize: 1 } };
+
 /**
  * Boots the dashboard inside `root`. All DOM lookups are scoped to `root`
- * (via data-el attributes) so multiple web parts / the SharePoint page around
- * it are never touched. Data comes from opts.fetchItems().
+ * (via data-el attributes). Data comes from opts.fetchItems().
  */
 export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void {
   const el = (name: string): HTMLElement => root.querySelector(`[data-el="${name}"]`) as HTMLElement;
@@ -63,6 +69,9 @@ export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void 
   }
   function fmt(v: number | null, d: number = 1): string {
     return v === null || v === undefined || isNaN(v) ? '—' : v.toFixed(d);
+  }
+  function round1(v: number | null): number | null {
+    return v === null || v === undefined || isNaN(v) ? null : Math.round(v * 10) / 10;
   }
   function escapeHtml(s: unknown): string {
     return ('' + s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
@@ -257,7 +266,7 @@ export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void 
     });
   }
 
-  // ---- export --------------------------------------------------------------
+  // ---- CSV export (dependency-free) ----------------------------------------
   function exportRows(): { [k: string]: unknown }[] {
     return filtered().map((d) => {
       const row: { [k: string]: unknown } = {};
@@ -286,14 +295,352 @@ export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void 
     const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
     triggerDownload(blob, `csat_responses_${exportStamp()}.csv`);
   }
-  function exportXLSX(): void {
-    closeExportMenu();
-    if (typeof XLSX === 'undefined') { alert('Excel export library did not load. Use CSV instead.'); return; }
-    const ws = XLSX.utils.json_to_sheet(exportRows(), { header: EXPORT_FIELDS });
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'CSAT Responses');
-    XLSX.writeFile(wb, `csat_responses_${exportStamp()}.xlsx`);
+
+  // ---- Excel export (ExcelJS: Summary + per-branch + All Responses) --------
+  // Charts are rendered from Chart.js to PNG and embedded as images (the free
+  // Excel libraries cannot author native chart objects).
+  const whiteBgPlugin: any = {
+    id: 'whiteBg',
+    beforeDraw(chart: any): void {
+      const ctx = chart.canvas.getContext('2d');
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, chart.width, chart.height);
+      ctx.restore();
+    }
+  };
+
+  // Renders a chart config off-screen and returns a base64 PNG (2x for crispness).
+  async function chartPNG(config: any, width: number, height: number): Promise<string> {
+    const holder = el('exportChartHolder');
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
+    holder.appendChild(canvas);
+
+    const cfg = JSON.parse(JSON.stringify(config)); // configs are plain data
+    cfg.options = Object.assign({}, cfg.options, {
+      responsive: false, maintainAspectRatio: false,
+      animation: false, devicePixelRatio: 2
+    });
+    cfg.plugins = [whiteBgPlugin];
+
+    const chart = new Chart(canvas, cfg);
+    // With animation disabled Chart.js paints synchronously on construction.
+    // Yield via setTimeout (rAF is suspended while the tab is hidden).
+    await new Promise((r) => setTimeout(r, 0));
+    const url = canvas.toDataURL('image/png');
+    chart.destroy();
+    holder.removeChild(canvas);
+    return url;
   }
+
+  // ---- chart configs used by the export ------------------------------------
+  function cfgBar(labels: any[], values: any[], axis?: any): any {
+    return {
+      type: 'bar',
+      data: { labels, datasets: [{ data: values, backgroundColor: '#378add', borderRadius: 3 }] },
+      options: { scales: { y: axis || AXIS_5, x: { ticks: { autoSkip: false, maxRotation: 30, minRotation: 0 } } }, plugins: { legend: { display: false } } }
+    };
+  }
+  function cfgLine(labels: any[], values: any[]): any {
+    return {
+      type: 'line',
+      data: { labels, datasets: [{ data: values, borderColor: '#378add', backgroundColor: 'rgba(55,138,221,0.12)', borderWidth: 2, tension: 0.35, fill: true, pointRadius: 2, spanGaps: true }] },
+      options: { scales: { y: { min: 1, max: 5 }, x: { ticks: { maxTicksLimit: 12, maxRotation: 40 } } }, plugins: { legend: { display: false } } }
+    };
+  }
+  function cfgDoughnut(labels: any[], values: any[]): any {
+    return {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: values, backgroundColor: ['#a32d2d', '#d9a441', '#0f6e56'] }] },
+      options: { plugins: { legend: { position: 'right' } } }
+    };
+  }
+
+  // ---- aggregation helpers -------------------------------------------------
+  function summaryOf(rows: ICsatItem[]): any {
+    const npsVals = rows.map((d) => d.nps).filter((v) => v !== null && v !== undefined) as number[];
+    return {
+      count: rows.length,
+      csat: avg(rows.map((d) => d.r_overall)),
+      safety: avg(rows.map((d) => d.safety)),
+      nps: npsScoreOf(rows),
+      det: npsVals.filter((v) => v <= 6).length,
+      pas: npsVals.filter((v) => v >= 7 && v <= 8).length,
+      pro: npsVals.filter((v) => v >= 9).length,
+      categories: starQs.map((q) => ({ label: q.label, value: avg(rows.map((d) => d[q.col] as number | null)) }))
+    };
+  }
+  function trendSeries(rows: ICsatItem[]): { labels: string[]; values: (number | null)[] } {
+    const byDate: { [k: string]: number[] } = {};
+    rows.forEach((d) => {
+      const key = ((d.serviceDate || d.Created || '') + '').split('T')[0];
+      if (!key || d.r_overall === null || d.r_overall === undefined) { return; }
+      (byDate[key] = byDate[key] || []).push(d.r_overall);
+    });
+    const labels = Object.keys(byDate).sort();
+    return { labels, values: labels.map((k) => avg(byDate[k])) };
+  }
+  function improvementCounts(rows: ICsatItem[]): [string, number][] {
+    const map: { [k: string]: number } = {};
+    rows.forEach((d) => (d.improvementAreas || '').split(';').map((s) => s.trim()).filter(Boolean)
+      .forEach((a) => { map[a] = (map[a] || 0) + 1; }));
+    return Object.keys(map).map((k) => [k, map[k]] as [string, number]).sort((a, b) => b[1] - a[1]);
+  }
+
+  // ---- worksheet helpers ---------------------------------------------------
+  function sanitizeSheetName(name: string, used: Set<string>): string {
+    let s = ('' + (name || 'Unknown')).replace(/[\\\/\?\*\[\]:]/g, '-').trim().slice(0, 31) || 'Sheet';
+    const base = s; let i = 2;
+    while (used.has(s.toLowerCase())) { const sfx = ' (' + i + ')'; s = base.slice(0, 31 - sfx.length) + sfx; i++; }
+    used.add(s.toLowerCase());
+    return s;
+  }
+  function titleBlock(ws: any, title: string, subtitle: string, span: number): void {
+    ws.mergeCells(1, 1, 1, span);
+    const t = ws.getCell(1, 1);
+    t.value = title;
+    t.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    t.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL_DARK } };
+    t.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    ws.getRow(1).height = 26;
+    ws.mergeCells(2, 1, 2, span);
+    const s = ws.getCell(2, 1);
+    s.value = subtitle;
+    s.font = { size: 9, color: { argb: 'FF666666' } };
+  }
+  function writeTable(ws: any, startRow: number, headers: any[], rows: any[][]): number {
+    const hr = ws.getRow(startRow);
+    headers.forEach((h, i) => {
+      const c = hr.getCell(i + 1);
+      c.value = h;
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL_DARK } };
+    });
+    hr.height = 17;
+    rows.forEach((r, ri) => {
+      const row = ws.getRow(startRow + 1 + ri);
+      r.forEach((v, i) => { row.getCell(i + 1).value = (v === undefined ? null : v); });
+      if (ri % 2 === 1) {
+        r.forEach((_, i) => {
+          row.getCell(i + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL_LIGHT } };
+        });
+      }
+    });
+    return startRow + rows.length + 2;
+  }
+  // Sizes every column to its widest actual cell value. Merged cells (title
+  // banner) are skipped or they'd blow out column A.
+  function autoFitColumns(ws: any, opts?: any): void {
+    const o = Object.assign({ min: 9, max: 55, padding: 2 }, opts || {});
+    const longest: number[] = [];
+    ws.eachRow({ includeEmpty: false }, (row: any) => {
+      row.eachCell({ includeEmpty: false }, (cell: any, colNumber: number) => {
+        if (cell.isMerged) { return; }
+        let v = cell.value;
+        if (v === null || v === undefined) { return; }
+        if (typeof v === 'object') {
+          if (v.richText) { v = v.richText.map((t: any) => t.text).join(''); }
+          else if (v.text !== undefined) { v = v.text; }
+          else if (v.result !== undefined) { v = v.result; }
+          else { return; }
+        }
+        ('' + v).split('\n').forEach((line) => {
+          if (line.length > (longest[colNumber] || 0)) { longest[colNumber] = line.length; }
+        });
+      });
+    });
+    longest.forEach((len, colNumber) => {
+      if (!colNumber) { return; }
+      ws.getColumn(colNumber).width = Math.min(o.max, Math.max(o.min, len) + o.padding);
+    });
+  }
+  function wrapColumns(ws: any, colNumbers: number[], width?: number): void {
+    const targets = new Set(colNumbers.filter(Boolean));
+    if (!targets.size) { return; }
+    targets.forEach((cn) => { ws.getColumn(cn).width = width || WRAP_WIDTH; });
+    ws.eachRow({ includeEmpty: false }, (row: any) => {
+      row.eachCell({ includeEmpty: false }, (cell: any, cn: number) => {
+        if (!targets.has(cn) || cell.isMerged) { return; }
+        cell.alignment = Object.assign({}, cell.alignment || {}, { wrapText: true, vertical: 'top' });
+      });
+    });
+  }
+  // Returns the first column index at/after the given pixel offset — used to
+  // place a second chart beside the first without overlapping it.
+  function colAtPixel(ws: any, px: number): number {
+    let acc = 0, col = 0;
+    while (acc < px && col < 80) { acc += (ws.getColumn(col + 1).width || 9) * 7; col++; }
+    return col;
+  }
+  async function addChart(wb: any, ws: any, config: any, anchorCol: number, anchorRow: number, w: number, h: number): Promise<void> {
+    const png = await chartPNG(config, w, h);
+    const id = wb.addImage({ base64: png.split(',')[1], extension: 'png' });
+    ws.addImage(id, { tl: { col: anchorCol, row: anchorRow }, ext: { width: w, height: h } });
+  }
+
+  function filterDescription(): string {
+    const f = currentFilters();
+    const parts: string[] = [];
+    parts.push(f.branch ? `Branch: ${f.branch}` : 'Branch: All');
+    parts.push((f.days as number) >= 9999 ? 'Range: All time' : `Range: Last ${f.days} days`);
+    parts.push(f.technician ? `Technician: ${f.technician}` : 'Technician: All');
+    return parts.join('  ·  ');
+  }
+
+  // ---- sheet builders ------------------------------------------------------
+  async function buildSummarySheet(wb: any, rows: ICsatItem[]): Promise<any> {
+    const ws = wb.addWorksheet('Summary', { views: [{ showGridLines: false }] });
+    titleBlock(ws, 'Stream-Flo — Field Service CSAT Summary',
+      `Generated ${new Date().toLocaleString()}   ·   ${filterDescription()}`, 12);
+
+    const s = summaryOf(rows);
+    let r = writeTable(ws, 4,
+      ['Metric', 'Value'],
+      [['Total responses', s.count],
+       ['Avg CSAT (out of 5)', round1(s.csat)],
+       ['NPS score', s.nps],
+       ['Safety score (out of 5)', round1(s.safety)],
+       ['Promoters (9–10)', s.pro],
+       ['Passives (7–8)', s.pas],
+       ['Detractors (0–6)', s.det]]);
+
+    const branches = Array.from(new Set(rows.map((d) => d.branch).filter(Boolean))).sort();
+    const branchRows = branches.map((b) => {
+      const bs = summaryOf(rows.filter((d) => d.branch === b));
+      return [b, bs.count, round1(bs.csat), bs.nps, round1(bs.safety)];
+    });
+    r = writeTable(ws, r, ['Branch', 'Responses', 'Avg CSAT', 'NPS', 'Safety'], branchRows);
+
+    r = writeTable(ws, r, ['Category', 'Avg rating'],
+      s.categories.map((c: any) => [c.label, round1(c.value)]));
+
+    autoFitColumns(ws);
+
+    const trend = trendSeries(rows);
+    let chartRow = r + 1;
+    const rightCol = colAtPixel(ws, 640);
+    await addChart(wb, ws, cfgBar(branches, branchRows.map((x) => x[2])), 0, chartRow, 620, 300);
+    await addChart(wb, ws, cfgDoughnut(['Detractors', 'Passives', 'Promoters'], [s.det, s.pas, s.pro]), rightCol, chartRow, 400, 300);
+    chartRow += 16;
+    await addChart(wb, ws, cfgLine(trend.labels, trend.values.map(round1)), 0, chartRow, 620, 300);
+    await addChart(wb, ws, cfgBar(s.categories.map((c: any) => c.label), s.categories.map((c: any) => round1(c.value))), rightCol, chartRow, 480, 300);
+    chartRow += 16;
+
+    const impr = improvementCounts(rows);
+    if (impr.length) {
+      await addChart(wb, ws, cfgBar(impr.map((x) => x[0]), impr.map((x) => x[1]),
+        { beginAtZero: true, ticks: { precision: 0 } }), 0, chartRow, 620, 300);
+    }
+    return ws;
+  }
+
+  async function buildBranchSheet(wb: any, wsName: string, branch: string, rows: ICsatItem[]): Promise<any> {
+    const ws = wb.addWorksheet(wsName, { views: [{ showGridLines: false }] });
+    titleBlock(ws, `${branch} — CSAT Detail`,
+      `${rows.length} response(s)   ·   Generated ${new Date().toLocaleString()}`, 12);
+
+    const s = summaryOf(rows);
+    let r = writeTable(ws, 4, ['Metric', 'Value'],
+      [['Responses', s.count],
+       ['Avg CSAT', round1(s.csat)],
+       ['NPS score', s.nps],
+       ['Safety score', round1(s.safety)]]);
+
+    const techMap: { [k: string]: (number | null)[] } = {};
+    rows.forEach((d) => {
+      if (!d.technician) { return; }
+      (techMap[d.technician] = techMap[d.technician] || []).push(d.r_overall);
+    });
+    const techRows = Object.keys(techMap)
+      .map((n) => [n, techMap[n].length, round1(avg(techMap[n]))])
+      .sort((a, b) => (b[1] as number) - (a[1] as number));
+    if (techRows.length) { r = writeTable(ws, r, ['Technician', 'Jobs', 'Avg rating'], techRows); }
+
+    const trend = trendSeries(rows);
+    const chartRow = r + 1;
+
+    const headers = ['Service date', 'Technician', 'Company', 'Contact', 'Service type',
+                     'Overall', 'Technical', 'Timeliness', 'Comms', 'Quality',
+                     'Professional', 'Cleanliness', 'NPS', 'Safety',
+                     'Improvement areas', 'Exemplary', 'Suggestion'];
+    const detail = rows.map((d) => [
+      ((d.serviceDate || '') + '').split('T')[0], d.technician || '', d.company || '',
+      d.contactName || '', d.serviceType || '',
+      d.r_overall, d.r_technical, d.r_timeliness, d.r_communication, d.r_quality,
+      d.r_professionalism, d.r_cleanliness, d.nps, d.safety,
+      d.improvementAreas || '', d.exemplary || '', d.improveSuggestion || ''
+    ]);
+    const tableStart = chartRow + 16 + 1;
+    writeTable(ws, tableStart, headers, detail);
+    ws.autoFilter = { from: { row: tableStart, column: 1 }, to: { row: tableStart, column: headers.length } };
+
+    autoFitColumns(ws);
+    wrapColumns(ws, ['Improvement areas', 'Exemplary', 'Suggestion'].map((h) => headers.indexOf(h) + 1));
+    await addChart(wb, ws, cfgBar(s.categories.map((c: any) => c.label), s.categories.map((c: any) => round1(c.value))), 0, chartRow, 560, 290);
+    if (trend.labels.length > 1) {
+      await addChart(wb, ws, cfgLine(trend.labels, trend.values.map(round1)), colAtPixel(ws, 580), chartRow, 500, 290);
+    }
+    return ws;
+  }
+
+  function buildAllResponsesSheet(wb: any, rows: ICsatItem[]): any {
+    const ws = wb.addWorksheet('All Responses');
+    const headers = EXPORT_FIELDS;
+    writeTable(ws, 1, headers, rows.map((d) => headers.map((f) =>
+      ((d as any)[f] === null || (d as any)[f] === undefined) ? '' : (d as any)[f])));
+    autoFitColumns(ws);
+    wrapColumns(ws, WRAP_FIELDS.map((f) => headers.indexOf(f) + 1));
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    return ws;
+  }
+
+  async function exportXLSX(): Promise<void> {
+    closeExportMenu();
+    if (typeof ExcelJS === 'undefined') {
+      alert('Excel export library did not load (offline?). Use CSV instead.');
+      return;
+    }
+    const btn = root.querySelector('[data-action="exportToggle"]') as HTMLButtonElement;
+    const original = btn ? btn.textContent : '';
+    if (btn) { btn.textContent = '⏳ Building…'; btn.disabled = true; }
+
+    try {
+      const rows = filtered();
+      if (!rows.length) { alert('No responses in the current filter to export.'); return; }
+
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Stream-Flo CSAT Dashboard';
+      wb.created = new Date();
+
+      await buildSummarySheet(wb, rows);
+
+      const used = new Set(['summary', 'all responses']);
+      const branches = Array.from(new Set(rows.map((d) => d.branch).filter(Boolean))).sort();
+      for (const b of branches) {
+        const name = sanitizeSheetName(b, used);
+        await buildBranchSheet(wb, name, b, rows.filter((d) => d.branch === b));
+      }
+
+      buildAllResponsesSheet(wb, rows);
+
+      const buf = await wb.xlsx.writeBuffer();
+      triggerDownload(
+        new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        `csat_dashboard_${exportStamp()}.xlsx`);
+    } catch (err) {
+      /* eslint-disable-next-line no-console */
+      console.error(err);
+      const msg = (err && (err as Error).message) ? (err as Error).message : ('' + err);
+      alert('Could not build the Excel file: ' + msg);
+    } finally {
+      if (btn) { btn.textContent = original; btn.disabled = false; }
+    }
+  }
+
   function toggleExportMenu(e: Event): void { e.stopPropagation(); el('exportMenu').classList.toggle('open'); }
   function closeExportMenu(): void { const m = root.querySelector('[data-el="exportMenu"]'); if (m) { m.classList.remove('open'); } }
 
@@ -355,7 +702,7 @@ export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void 
       else if (action === 'auto') { toggleAuto(); }
       else if (action === 'exportToggle') { toggleExportMenu(e); }
       else if (action === 'exportCsv') { exportCSV(); }
-      else if (action === 'exportXlsx') { exportXLSX(); }
+      else if (action === 'exportXlsx') { exportXLSX().catch(() => undefined); }
     });
   });
   // clicking anywhere else closes the export menu

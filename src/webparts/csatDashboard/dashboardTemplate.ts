@@ -125,8 +125,8 @@ export const DASHBOARD_HTML: string = `
       <div class="dropdown">
         <button class="hbtn" data-action="exportToggle">&#10515; Export &#9662;</button>
         <div class="dropdown-menu" data-el="exportMenu">
-          <button data-action="exportCsv">Download CSV</button>
-          <button data-action="exportXlsx">Download Excel (.xlsx)</button>
+          <button data-action="exportCsv">Download CSV (raw data)</button>
+          <button data-action="exportXlsx">Download Excel &mdash; charts + branch sheets</button>
         </div>
       </div>
       <button class="hbtn" data-action="refresh">&#10226; Refresh</button>
@@ -211,5 +211,6 @@ export const DASHBOARD_HTML: string = `
       <div class="last-sync" data-el="lastSync"></div>
     </div>
   </div>
+  <div data-el="exportChartHolder" aria-hidden="true" style="position:fixed; left:-10000px; top:0; width:900px; height:500px; background:#fff;"></div>
 </div>
 `;
