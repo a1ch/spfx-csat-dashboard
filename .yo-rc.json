@@ -1,0 +1,13 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "isCreatingSolution": true,
+    "environment": "spo",
+    "version": "1.18.2",
+    "libraryName": "spfx-csat-dashboard",
+    "libraryId": "b3a7e9c2-1f4d-4c8a-9e21-7c5d0a3f6b18",
+    "packageManager": "npm",
+    "isDomainIsolated": false,
+    "componentType": "webpart",
+    "framework": "none"
+  }
+}

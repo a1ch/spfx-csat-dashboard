@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "csat-dashboard-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/csatDashboard/CsatDashboardWebPart.js",
+          "manifest": "./src/webparts/csatDashboard/CsatDashboardWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "CsatDashboardWebPartStrings": "lib/webparts/csatDashboard/loc/{locale}.js"
+  }
+}

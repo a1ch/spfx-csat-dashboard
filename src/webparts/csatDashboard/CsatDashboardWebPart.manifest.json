@@ -1,0 +1,24 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "a1c8f4d6-2b7e-4f93-8d15-6e0a3c9b7d24",
+  "alias": "CsatDashboardWebPart",
+  "componentType": "WebPart",
+  "version": "*",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "supportedHosts": ["SharePointWebPart", "SharePointFullPage"],
+  "supportsThemeVariants": true,
+
+  "preconfiguredEntries": [{
+    "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
+    "group": { "default": "Advanced" },
+    "title": { "default": "Stream-Flo CSAT Dashboard" },
+    "description": { "default": "Live customer-satisfaction dashboard reading the CSAT RESPONSES list." },
+    "officeFabricIconFontName": "BarChartVerticalFill",
+    "properties": {
+      "listSiteUrl": "https://streamflogroup.sharepoint.com/sites/SUSTeam-SUSBranchOperations",
+      "listName": "CSAT RESPONSES",
+      "autoRefreshSeconds": 120
+    }
+  }]
+}

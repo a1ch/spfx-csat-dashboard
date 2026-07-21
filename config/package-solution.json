@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "spfx-csat-dashboard-client-side-solution",
+    "id": "b3a7e9c2-1f4d-4c8a-9e21-7c5d0a3f6b18",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "Stream-Flo / Streamflo Group",
+      "websiteUrl": "https://streamflogroup.sharepoint.com",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": ""
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "Live CSAT dashboard reading the CSAT RESPONSES SharePoint list under the signed-in user's context."
+      },
+      "longDescription": {
+        "default": "Field Service customer-satisfaction dashboard. Reads the CSAT RESPONSES list directly via SharePoint REST (no external flow), rendering KPIs, CSAT trend, branch and technician performance, NPS breakdown, improvement areas, and verbatim comments, with CSV/Excel export."
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "spfx-csat-dashboard Feature",
+        "description": "The feature that activates elements of the spfx-csat-dashboard solution.",
+        "id": "d2f5a1b7-8c34-4e6a-b019-3a7c9e5d2f41",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/spfx-csat-dashboard.sppkg"
+  }
+}
