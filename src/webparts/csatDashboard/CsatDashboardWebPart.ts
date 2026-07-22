@@ -25,14 +25,26 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
 
   protected async onInit(): Promise<void> {
     await super.onInit();
-    // Load Chart.js and SheetJS (xlsx) once, from CDN. If a tenant blocks the
-    // CDN the dashboard still renders — charts/export just degrade gracefully.
-    try {
-      await SPComponentLoader.loadScript(CHARTJS_URL);
-      await SPComponentLoader.loadScript(EXCELJS_URL);
-    } catch {
-      // CDN unreachable — dashboard still renders; charts/xlsx degrade.
-    }
+    // Load Chart.js and ExcelJS once, from CDN. Both are UMD bundles, and the
+    // SharePoint page already has an AMD loader (define/require) present. Loaded
+    // as a plain script, the UMD wrapper registers as an anonymous AMD module
+    // instead of assigning window.Chart / window.ExcelJS — so the globals the
+    // dashboard checks for stay undefined (blank charts, failed Excel export).
+    // Passing globalExportsName makes SPComponentLoader suppress AMD during the
+    // load and capture the real browser global. Each loads independently so one
+    // failing (or a tenant blocking the CDN) still leaves the other working.
+    await Promise.all([
+      SPComponentLoader.loadScript(CHARTJS_URL, { globalExportsName: 'Chart' })
+        .catch((e: unknown) => {
+          /* eslint-disable-next-line no-console */
+          console.error('CSAT dashboard: Chart.js failed to load', e);
+        }),
+      SPComponentLoader.loadScript(EXCELJS_URL, { globalExportsName: 'ExcelJS' })
+        .catch((e: unknown) => {
+          /* eslint-disable-next-line no-console */
+          console.error('CSAT dashboard: ExcelJS failed to load', e);
+        })
+    ]);
   }
 
   public render(): void {
