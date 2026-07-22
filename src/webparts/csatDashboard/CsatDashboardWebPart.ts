@@ -9,7 +9,7 @@ import { SPComponentLoader } from '@microsoft/sp-loader';
 
 import * as strings from 'CsatDashboardWebPartStrings';
 import { DASHBOARD_HTML } from './dashboardTemplate';
-import { initDashboard } from './dashboardCore';
+import { initDashboard, IDashboardController } from './dashboardCore';
 import { fetchCsatItems, ICsatItem } from './CsatDataService';
 
 export interface ICsatDashboardWebPartProps {
@@ -22,6 +22,9 @@ const CHARTJS_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4
 const EXCELJS_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
 
 export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDashboardWebPartProps> {
+
+  private _dashboard: IDashboardController | undefined;
+  private _builtKey: string = '';
 
   protected async onInit(): Promise<void> {
     await super.onInit();
@@ -52,22 +55,33 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
     const listName: string = (this.properties.listName || 'CSAT RESPONSES').trim();
     const autoRefreshSeconds: number = this.properties.autoRefreshSeconds || 0;
 
+    // SharePoint calls render() often (selection, resize, layout, property
+    // edits). Rebuilding the DOM + re-initialising the dashboard every time
+    // caused visible flicker and stacked auto-refresh timers. Only rebuild when
+    // the config that actually affects the dashboard changed; otherwise leave
+    // the running instance (and its single refresh timer) untouched.
+    const key: string = `${siteUrl}|${listName}|${autoRefreshSeconds}`;
+    const hasRoot: boolean = !!this.domElement.querySelector('.sfCsatRoot');
+    if (hasRoot && this._dashboard && key === this._builtKey) { return; }
+
+    if (this._dashboard) { this._dashboard.destroy(); this._dashboard = undefined; }
+    this._builtKey = key;
+
     this.domElement.innerHTML = DASHBOARD_HTML;
 
     const root: HTMLElement = this.domElement.querySelector('.sfCsatRoot') as HTMLElement;
     if (!root) { return; }
 
-    initDashboard(root, {
+    // initDashboard arms auto-refresh itself (a single, non-stacking timer) when
+    // autoRefreshSeconds > 0 — no programmatic button click needed.
+    this._dashboard = initDashboard(root, {
       autoRefreshSeconds,
       fetchItems: (): Promise<ICsatItem[]> => fetchCsatItems(this.context.spHttpClient, siteUrl, listName)
     });
+  }
 
-    // If auto-refresh is configured, start it after first render by clicking
-    // the Auto toggle programmatically once the dashboard has wired up.
-    if (autoRefreshSeconds > 0) {
-      const autoBtn = root.querySelector('[data-action="auto"]') as HTMLElement;
-      if (autoBtn) { window.setTimeout(() => autoBtn.click(), 3000); }
-    }
+  protected onDispose(): void {
+    if (this._dashboard) { this._dashboard.destroy(); this._dashboard = undefined; }
   }
 
   protected get dataVersion(): Version {

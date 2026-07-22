@@ -11,6 +11,14 @@ export interface IDashboardOptions {
   autoRefreshSeconds: number;
 }
 
+export interface IDashboardController {
+  destroy: () => void;
+}
+
+// SharePoint may call the web part's render() rapidly; never let auto-refresh
+// hammer the list faster than this, whatever the configured value.
+const MIN_AUTO_REFRESH_SECONDS: number = 30;
+
 const starQs: { col: keyof ICsatItem; label: string }[] = [
   { col: 'r_overall', label: 'Overall satisfaction' },
   { col: 'r_technical', label: 'Technical competency' },
@@ -40,7 +48,7 @@ const AXIS_5: any = { min: 0, max: 5, ticks: { stepSize: 1 } };
  * Boots the dashboard inside `root`. All DOM lookups are scoped to `root`
  * (via data-el attributes). Data comes from opts.fetchItems().
  */
-export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void {
+export function initDashboard(root: HTMLElement, opts: IDashboardOptions): IDashboardController {
   const el = (name: string): HTMLElement => root.querySelector(`[data-el="${name}"]`) as HTMLElement;
 
   let allItems: ICsatItem[] = [];
@@ -645,16 +653,26 @@ export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void 
   function closeExportMenu(): void { const m = root.querySelector('[data-el="exportMenu"]'); if (m) { m.classList.remove('open'); } }
 
   // ---- auto refresh --------------------------------------------------------
-  function toggleAuto(): void {
+  // start/stop are idempotent: startAuto never creates a second timer, so
+  // repeated calls (e.g. from repeated web part render()) cannot stack up and
+  // fire loadData in rapid succession.
+  function autoIntervalMs(): number {
+    const secs = opts.autoRefreshSeconds > 0 ? opts.autoRefreshSeconds : 120;
+    return Math.max(secs, MIN_AUTO_REFRESH_SECONDS) * 1000;
+  }
+  function startAuto(): void {
+    if (autoTimer) { return; }
     const btn = root.querySelector('[data-action="auto"]') as HTMLElement;
-    if (autoTimer) {
-      clearInterval(autoTimer); autoTimer = null;
-      btn.classList.remove('active'); btn.textContent = '◷ Auto';
-    } else {
-      const secs = opts.autoRefreshSeconds > 0 ? opts.autoRefreshSeconds : 120;
-      autoTimer = setInterval(loadData, secs * 1000);
-      btn.classList.add('active'); btn.textContent = '◷ Auto on';
-    }
+    autoTimer = setInterval(() => { loadData().catch(() => undefined); }, autoIntervalMs());
+    if (btn) { btn.classList.add('active'); btn.textContent = '◷ Auto on'; }
+  }
+  function stopAuto(): void {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    const btn = root.querySelector('[data-action="auto"]') as HTMLElement;
+    if (btn) { btn.classList.remove('active'); btn.textContent = '◷ Auto'; }
+  }
+  function toggleAuto(): void {
+    if (autoTimer) { stopAuto(); } else { startAuto(); }
   }
 
   // ---- load ----------------------------------------------------------------
@@ -711,6 +729,14 @@ export function initDashboard(root: HTMLElement, opts: IDashboardOptions): void 
     if (!t.closest || !t.closest('.dropdown')) { closeExportMenu(); }
   });
 
-  // initial load
+  // initial load, then arm auto-refresh once (guarded — never stacks)
   loadData().catch(() => undefined);
+  if (opts.autoRefreshSeconds > 0) { startAuto(); }
+
+  return {
+    destroy(): void {
+      stopAuto();
+      if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    }
+  };
 }
