@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "spfx-ops-dashboard-client-side-solution",
+    "id": "46954771-9197-4914-a895-c025c60f64fa",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "Stream-Flo / Streamflo Group",
+      "websiteUrl": "https://streamflogroup.sharepoint.com",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": ""
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "L48 FY27 Operations performance dashboard reading the metrics workbook from a SharePoint library."
+      },
+      "longDescription": {
+        "default": "Operations dashboard: revenue vs budget, TRIR/COPQ/CSTAT/cost/profit by branch and month, quarterly rollups, and shared per-branch notes. Reads the FY27 metrics .xlsx live from a document library; update by replacing the file."
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "spfx-ops-dashboard Feature",
+        "description": "The feature that activates elements of the spfx-ops-dashboard solution.",
+        "id": "98e4f57e-8c25-491c-8386-2ea9b7613413",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/spfx-ops-dashboard.sppkg"
+  }
+}
