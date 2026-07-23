@@ -17,7 +17,7 @@ export interface IDashboardController {
 
 // Bump this on every deployed build so the header shows which version is live
 // — the quickest way to confirm a new .sppkg actually took effect on a page.
-export const DASHBOARD_VERSION: string = '1.5.0 · 2026-07-23';
+export const DASHBOARD_VERSION: string = '1.6.0 · 2026-07-23';
 
 // SharePoint may call the web part's render() rapidly; never let auto-refresh
 // hammer the list faster than this, whatever the configured value.

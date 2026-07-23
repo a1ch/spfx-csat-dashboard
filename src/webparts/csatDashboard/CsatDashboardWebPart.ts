@@ -12,19 +12,26 @@ import { DASHBOARD_HTML } from './dashboardTemplate';
 import { initDashboard, IDashboardController } from './dashboardCore';
 import { fetchCsatItems, ICsatItem } from './CsatDataService';
 
+// ExcelJS is bundled straight into this package (its self-contained browser
+// build) instead of being fetched at runtime. Loading it from a CDN or Site
+// Assets proved unreliable on this tenant — the 925 KB UMD kept failing to
+// attach window.ExcelJS (CDN block / MIME / AMD-loader interaction), leaving
+// Excel export broken while the smaller Chart.js worked. Bundling removes every
+// one of those failure modes: the global is guaranteed to exist.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ExcelJSBundled: any = require('exceljs/dist/exceljs.min.js');
+
 export interface ICsatDashboardWebPartProps {
   listSiteUrl: string;
   listName: string;
   autoRefreshSeconds: number;
   chartJsUrl: string;
-  excelJsUrl: string;
 }
 
-// Public CDN defaults. If a tenant blocks the CDN (common for the larger
-// ExcelJS file), the URLs can be overridden in the property pane to point at a
-// same-tenant copy uploaded to e.g. Site Assets.
+// Chart.js still loads at runtime (small, reliable). CDN default; overridable in
+// the property pane with a same-tenant copy if a tenant blocks the CDN.
 const CHARTJS_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
-const EXCELJS_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
 
 export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDashboardWebPartProps> {
 
@@ -45,24 +52,12 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
     // with a same-tenant copy — needed when the tenant blocks the CDN (the
     // 925 KB ExcelJS file is the usual casualty). Each loads independently so
     // one failing still leaves the other working.
-    const chartUrl: string = (this.properties.chartJsUrl || '').trim() || CHARTJS_URL;
-    const excelUrl: string = (this.properties.excelJsUrl || '').trim() || EXCELJS_URL;
+    // ExcelJS is bundled — just expose it as the browser global the dashboard's
+    // export code expects. Guaranteed present; nothing to download or race.
+    (window as any).ExcelJS = ExcelJSBundled && ExcelJSBundled.default ? ExcelJSBundled.default : ExcelJSBundled;
 
-    // Load the two UMD libraries SEQUENTIALLY, not in parallel. globalExportsName
-    // works by briefly suppressing the page's AMD loader while the script runs so
-    // its UMD wrapper assigns a real browser global instead of registering as an
-    // anonymous AMD module. Loading both at once let those suppression windows
-    // overlap: the smaller Chart.js finished and restored the AMD loader while
-    // the ~4.5x larger ExcelJS was still executing, so ExcelJS took the AMD path
-    // and never set window.ExcelJS — charts worked, Excel export didn't. Awaiting
-    // one before starting the next keeps each window isolated. ExcelJS goes first
-    // (the bigger, slower one) so it always runs in a clean environment.
-    try {
-      await SPComponentLoader.loadScript(excelUrl, { globalExportsName: 'ExcelJS' });
-    } catch (e) {
-      /* eslint-disable-next-line no-console */
-      console.error('CSAT dashboard: ExcelJS failed to load from ' + excelUrl, e);
-    }
+    // Chart.js is loaded at runtime (works reliably; CDN or self-hosted URL).
+    const chartUrl: string = (this.properties.chartJsUrl || '').trim() || CHARTJS_URL;
     try {
       await SPComponentLoader.loadScript(chartUrl, { globalExportsName: 'Chart' });
     } catch (e) {
@@ -137,13 +132,9 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
             {
               groupName: 'Script sources (advanced)',
               groupFields: [
-                PropertyPaneTextField('excelJsUrl', {
-                  label: 'ExcelJS library URL',
-                  description: 'Used by Export → Excel. If your tenant blocks the public CDN, upload exceljs.min.js to a library on this site (e.g. Site Assets) and paste its full URL here. Leave blank to use the public CDN.'
-                }),
                 PropertyPaneTextField('chartJsUrl', {
                   label: 'Chart.js library URL',
-                  description: 'Used by the dashboard charts. Same idea: upload chart.umd.js to this site and paste its URL if the CDN is blocked. Leave blank to use the public CDN.'
+                  description: 'Used by the dashboard charts. If your tenant blocks the public CDN, upload chart.umd.js to a library on this site (e.g. Site Assets) and paste its full URL here. Leave blank to use the public CDN. (ExcelJS is now built into the web part — no URL needed.)'
                 })
               ]
             }
