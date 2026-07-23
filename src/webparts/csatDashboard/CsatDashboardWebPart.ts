@@ -126,7 +126,6 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
             },
             {
               groupName: 'Script sources (advanced)',
-              isCollapsed: true,
               groupFields: [
                 PropertyPaneTextField('excelJsUrl', {
                   label: 'ExcelJS library URL',
