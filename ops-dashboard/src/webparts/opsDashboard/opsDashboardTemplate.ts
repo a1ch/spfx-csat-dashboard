@@ -28,6 +28,10 @@ export const OPS_DASHBOARD_HTML: string = `
   .opsRoot .header-controls select { font-size:13px; padding:6px 10px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer; outline:none; }
   .opsRoot .header-controls select option { background:var(--navy); color:#fff; }
   .opsRoot .header-controls select:hover { border-color:rgba(255,255,255,0.3); }
+  .opsRoot .hbtn { font-size:13px; padding:6px 12px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer; outline:none; text-decoration:none; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+  .opsRoot .hbtn:hover { border-color:rgba(255,255,255,0.3); background:rgba(255,255,255,0.14); }
+  .opsRoot .hbtn.accent { background:var(--accent); border-color:var(--accent); }
+  .opsRoot .hbtn.accent:hover { background:#1f6fbf; }
 
   .opsRoot .body-wrap { display:flex; flex:1; overflow:hidden; }
 
@@ -124,6 +128,8 @@ export const OPS_DASHBOARD_HTML: string = `
     <div class="header-controls">
       <select data-el="branchSel"><option value="ALL">All branches</option></select>
       <select data-el="metricSel"><option value="ALL">All metrics</option></select>
+      <button class="hbtn" data-el="refreshBtn" title="Reload the workbook data">&#8635; Refresh</button>
+      <a class="hbtn accent" data-el="uploadBtn" target="_blank" rel="noopener" title="Open the library to upload / replace the FY27 workbook">&#10514; Update data</a>
     </div>
   </header>
 

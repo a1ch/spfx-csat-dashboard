@@ -57,7 +57,13 @@ export default class OpsDashboardWebPart extends BaseClientSideWebPart<IOpsDashb
     const root: HTMLElement = this.domElement.querySelector('.opsRoot') as HTMLElement;
     if (!root) { return; }
 
+    // Folder that holds the workbook — the "Update data" button opens it so
+    // people can upload/replace the file where the dashboard reads it.
+    const slash: number = workbookUrl.lastIndexOf('/');
+    const uploadUrl: string = slash > 0 ? workbookUrl.slice(0, slash) : '';
+
     this._dashboard = initOpsDashboard(root, {
+      uploadUrl,
       fetchData: () => fetchOpsData(this.context.spHttpClient, siteUrl, workbookUrl),
       fetchNotes: () => fetchNotes(this.context.spHttpClient, siteUrl, notesListName),
       saveNote: (b, m, mo, note, id) => saveNote(this.context.spHttpClient, siteUrl, notesListName, b, m, mo, note, id)

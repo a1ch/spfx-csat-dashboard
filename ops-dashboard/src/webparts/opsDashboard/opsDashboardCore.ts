@@ -5,12 +5,13 @@ import { IOpsNote, noteKey } from './OpsNotesService';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare const Chart: any;
 
-export const OPS_DASHBOARD_VERSION: string = '1.0.0 · 2026-07-23';
+export const OPS_DASHBOARD_VERSION: string = '1.1.0 · 2026-07-23';
 
 export interface IOpsDashboardOptions {
   fetchData: () => Promise<IOpsDataset>;
   fetchNotes: () => Promise<{ [key: string]: IOpsNote }>;
   saveNote: (branch: string, metric: string, month: string, note: string, existingId: number | null) => Promise<number | null>;
+  uploadUrl?: string;   // library folder that holds the workbook (for the "Update data" button)
 }
 
 export interface IOpsController { destroy: () => void; }
@@ -522,6 +523,17 @@ export function initOpsDashboard(root: HTMLElement, opts: IOpsDashboardOptions):
       stateMsg('Could not load the dashboard', 'Check the workbook path and that the file is the FY27 metrics workbook, then reload.', msg);
     }
   }
+
+  // "Update data" opens the document library folder that holds the workbook so
+  // anyone can drop in a replacement file; "Refresh" re-reads without a full
+  // page reload.
+  const uploadBtn = root.querySelector('[data-el="uploadBtn"]') as HTMLAnchorElement;
+  if (uploadBtn) {
+    if (opts.uploadUrl) { uploadBtn.href = opts.uploadUrl; }
+    else { uploadBtn.style.display = 'none'; }
+  }
+  const refreshBtn = root.querySelector('[data-el="refreshBtn"]');
+  if (refreshBtn) { refreshBtn.addEventListener('click', () => { load().catch(() => undefined); }); }
 
   // static Views nav is already in the DOM; wire it once the branch nav exists.
   wireNav();
