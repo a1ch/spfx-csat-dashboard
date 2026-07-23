@@ -15,6 +15,10 @@ export interface IDashboardController {
   destroy: () => void;
 }
 
+// Bump this on every deployed build so the header shows which version is live
+// — the quickest way to confirm a new .sppkg actually took effect on a page.
+export const DASHBOARD_VERSION: string = '1.4.0 · 2026-07-23';
+
 // SharePoint may call the web part's render() rapidly; never let auto-refresh
 // hammer the list faster than this, whatever the configured value.
 const MIN_AUTO_REFRESH_SECONDS: number = 30;
@@ -50,6 +54,9 @@ const AXIS_5: any = { min: 0, max: 5, ticks: { stepSize: 1 } };
  */
 export function initDashboard(root: HTMLElement, opts: IDashboardOptions): IDashboardController {
   const el = (name: string): HTMLElement => root.querySelector(`[data-el="${name}"]`) as HTMLElement;
+
+  const verEl = root.querySelector('[data-el="appVersion"]');
+  if (verEl) { verEl.textContent = 'v' + DASHBOARD_VERSION; }
 
   let allItems: ICsatItem[] = [];
   let trendChartInst: any = null;

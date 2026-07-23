@@ -108,6 +108,7 @@ export const DASHBOARD_HTML: string = `
   .sfCsatRoot .stars-mini { color: #f5a623; font-size: 14px; letter-spacing: -1px; }
 
   .sfCsatRoot .last-sync { font-size: 11px; color: var(--text-tertiary); text-align: right; margin-top: 4px; }
+  .sfCsatRoot .app-version { font-size: 10px; font-weight: 600; letter-spacing: .3px; color: var(--text-tertiary); opacity: .75; margin-left: 8px; white-space: nowrap; }
 </style>
 
 <div class="sfCsatRoot">
@@ -115,7 +116,7 @@ export const DASHBOARD_HTML: string = `
     <div class="app-header-left">
       <div class="app-header-logo"><svg viewBox="0 0 24 24"><path d="M12 2C6 8 4 12 4 15a8 8 0 0016 0c0-3-2-7-8-13z"/></svg></div>
       <div>
-        <div class="app-header-title">Stream-Flo &mdash; Live CSAT Dashboard</div>
+        <div class="app-header-title">Stream-Flo &mdash; Live CSAT Dashboard<span class="app-version" data-el="appVersion"></span></div>
         <div class="app-header-sub" data-el="connSub">Connecting to SharePoint&hellip;</div>
       </div>
     </div>
