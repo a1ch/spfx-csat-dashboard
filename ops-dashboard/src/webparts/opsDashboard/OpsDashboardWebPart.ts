@@ -58,9 +58,14 @@ export default class OpsDashboardWebPart extends BaseClientSideWebPart<IOpsDashb
     if (!root) { return; }
 
     // Folder that holds the workbook — the "Update data" button opens it so
-    // people can upload/replace the file where the dashboard reads it.
-    const slash: number = workbookUrl.lastIndexOf('/');
-    const uploadUrl: string = slash > 0 ? workbookUrl.slice(0, slash) : '';
+    // people can upload/replace the file where the dashboard reads it. If the
+    // property points at a folder already, use it as-is; if it points at a
+    // specific .xlsx, strip the file name to get the folder.
+    let uploadUrl: string = workbookUrl.replace(/\/$/, '');
+    if (/\.xlsx$/i.test(uploadUrl)) {
+      const slash: number = uploadUrl.lastIndexOf('/');
+      uploadUrl = slash > 0 ? uploadUrl.slice(0, slash) : '';
+    }
 
     this._dashboard = initOpsDashboard(root, {
       uploadUrl,
@@ -89,7 +94,7 @@ export default class OpsDashboardWebPart extends BaseClientSideWebPart<IOpsDashb
               groupFields: [
                 PropertyPaneTextField('workbookUrl', {
                   label: strings.WorkbookUrlFieldLabel,
-                  description: 'Full or server-relative URL of the FY27 metrics .xlsx in a document library (e.g. https://…/sites/…/Shared Documents/FY27_Master_Metrics.xlsx). Replace this file to update the dashboard.',
+                  description: 'URL of the FY27 workbook, OR the folder that holds it. Point it at the FOLDER (e.g. https://…/SiteAssets/FYOpsDashboard) and the dashboard loads the newest .xlsx in that folder — so a replacement upload works no matter what it is named. Or point it at a specific .xlsx file.',
                   multiline: true
                 }),
                 PropertyPaneTextField('listSiteUrl', {

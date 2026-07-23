@@ -5,7 +5,7 @@ import { IOpsNote, noteKey } from './OpsNotesService';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare const Chart: any;
 
-export const OPS_DASHBOARD_VERSION: string = '1.1.0 · 2026-07-23';
+export const OPS_DASHBOARD_VERSION: string = '1.2.0 · 2026-07-23';
 
 export interface IOpsDashboardOptions {
   fetchData: () => Promise<IOpsDataset>;
@@ -22,7 +22,7 @@ const QUARTERS: { [q: string]: string[] } = { Q1: ['Apr', 'May', 'Jun'], Q2: ['J
 export function initOpsDashboard(root: HTMLElement, opts: IOpsDashboardOptions): IOpsController {
   const el = (name: string): HTMLElement => root.querySelector(`[data-el="${name}"]`) as HTMLElement;
 
-  let dataset: IOpsDataset = { rows: [], branches: [], metrics: [], units: {}, directions: {}, monthsPresent: [] };
+  let dataset: IOpsDataset = { rows: [], branches: [], metrics: [], units: {}, directions: {}, monthsPresent: [], sourceName: '' };
   let notesMap: { [key: string]: IOpsNote } = {};
   const notesLocal: { [key: string]: string } = {};
   const notesDirty: { [key: string]: boolean } = {};
@@ -515,6 +515,8 @@ export function initOpsDashboard(root: HTMLElement, opts: IOpsDashboardOptions):
     try {
       const [ds, nm] = await Promise.all([opts.fetchData(), opts.fetchNotes()]);
       dataset = ds; notesMap = nm;
+      const footer = el('footer');
+      if (footer) { footer.textContent = 'FY27 · Apr 2026 – Mar 2027' + (dataset.sourceName ? ' · source: ' + dataset.sourceName : ''); }
       populateFilters();
       renderAll();
       switchTab('overview');

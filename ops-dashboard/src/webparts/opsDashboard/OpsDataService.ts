@@ -27,6 +27,7 @@ export interface IOpsDataset {
   units: { [metric: string]: string };
   directions: { [metric: string]: Direction };
   monthsPresent: string[];          // months that appear in the data, FY order
+  sourceName: string;               // file the data was read from
 }
 
 const FACT_SHEET: string = 'Fact_MonthlyInputs';
@@ -93,13 +94,41 @@ function monthFromRow(periodStart: any, periodLabel: any): { name: string; index
 }
 
 function serverRelative(fileUrl: string): string {
-  const u: string = (fileUrl || '').trim();
+  const u: string = (fileUrl || '').trim().replace(/\/$/, '');
   if (!u) { return ''; }
   if (/^https?:\/\//i.test(u)) {
     const idx: number = u.indexOf('/', u.indexOf('://') + 3);
     return idx >= 0 ? u.slice(idx) : u;
   }
   return u.charAt(0) === '/' ? u : '/' + u;
+}
+
+// Resolves the configured path to an actual workbook. If it points straight at
+// a .xlsx, that file is used. If it points at a FOLDER, the newest .xlsx in the
+// folder is used — so a replacement upload works regardless of its file name.
+async function resolveWorkbook(
+  spHttpClient: SPHttpClient, site: string, rel: string
+): Promise<{ url: string; name: string }> {
+  if (/\.xlsx$/i.test(rel)) {
+    return { url: rel, name: rel.slice(rel.lastIndexOf('/') + 1) };
+  }
+  const api: string =
+    `${site}/_api/web/getfolderbyserverrelativeurl('${rel.replace(/'/g, "''")}')/Files` +
+    `?$select=Name,ServerRelativeUrl,TimeLastModified&$orderby=TimeLastModified desc&$top=500`;
+  const res: SPHttpClientResponse = await spHttpClient.get(api, SPHttpClient.configurations.v1, {
+    headers: { 'Accept': 'application/json;odata=nometadata' }
+  });
+  if (!res.ok) {
+    throw new Error(`Could not list the folder (${res.status}). Check the folder path and your access.`);
+  }
+  const data: any = await res.json();
+  const files: any[] = (Array.isArray(data.value) ? data.value : [])
+    .filter((f: any) => /\.xlsx$/i.test(f.Name) && String(f.Name).indexOf('~$') !== 0);
+  if (!files.length) {
+    throw new Error(`No .xlsx file found in the folder. Upload the FY27 workbook to it.`);
+  }
+  // Already ordered newest-first by the query.
+  return { url: files[0].ServerRelativeUrl, name: files[0].Name };
 }
 
 /**
@@ -115,10 +144,11 @@ export async function fetchOpsData(
 ): Promise<IOpsDataset> {
   const site: string = siteUrl.replace(/\/$/, '');
   const rel: string = serverRelative(fileUrl);
-  if (!rel) { throw new Error('No Excel file path configured. Set the workbook URL in the web part properties.'); }
+  if (!rel) { throw new Error('No workbook path configured. Set the workbook (or folder) URL in the web part properties.'); }
 
+  const resolved = await resolveWorkbook(spHttpClient, site, rel);
   const api: string =
-    `${site}/_api/web/getfilebyserverrelativeurl('${rel.replace(/'/g, "''")}')/$value`;
+    `${site}/_api/web/getfilebyserverrelativeurl('${resolved.url.replace(/'/g, "''")}')/$value`;
 
   const res: SPHttpClientResponse = await spHttpClient.get(api, SPHttpClient.configurations.v1, {
     headers: { 'Accept': 'application/octet-stream' }
@@ -196,5 +226,5 @@ export async function fetchOpsData(
     .concat(found.filter((m) => METRIC_ORDER.indexOf(m) < 0));
   const monthsPresent: string[] = FY_MONTH_ORDER.filter((m) => rows.some((r) => r.month === m));
 
-  return { rows, branches, metrics, units: unitByMetric, directions: dirByMetric, monthsPresent };
+  return { rows, branches, metrics, units: unitByMetric, directions: dirByMetric, monthsPresent, sourceName: resolved.name };
 }
