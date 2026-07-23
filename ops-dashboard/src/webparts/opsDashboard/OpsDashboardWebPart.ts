@@ -4,13 +4,9 @@ import {
   PropertyPaneTextField
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
+import { SPComponentLoader } from '@microsoft/sp-loader';
 
-// Chart.js is bundled (chart.js/auto auto-registers all controllers) and
-// attached to window so the core can use it as a global — no runtime CDN load.
-// Namespace import + .default fallback keeps this robust to esModuleInterop.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as ChartAuto from 'chart.js/auto';
-
 import * as strings from 'OpsDashboardWebPartStrings';
 import { OPS_DASHBOARD_HTML } from './opsDashboardTemplate';
 import { initOpsDashboard, IOpsController } from './opsDashboardCore';
@@ -21,7 +17,13 @@ export interface IOpsDashboardWebPartProps {
   listSiteUrl: string;
   workbookUrl: string;
   notesListName: string;
+  chartJsUrl: string;
 }
+
+// Chart.js v4's ESM build uses static class fields that SPFx's webpack 4 can't
+// parse, so it can't be bundled. Load the pre-built UMD at runtime instead —
+// the same approach the CSAT dashboard uses successfully on this tenant.
+const CHARTJS_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
 
 export default class OpsDashboardWebPart extends BaseClientSideWebPart<IOpsDashboardWebPartProps> {
 
@@ -30,7 +32,13 @@ export default class OpsDashboardWebPart extends BaseClientSideWebPart<IOpsDashb
 
   protected async onInit(): Promise<void> {
     await super.onInit();
-    (window as any).Chart = (ChartAuto as any).default || ChartAuto;
+    const chartUrl: string = (this.properties.chartJsUrl || '').trim() || CHARTJS_URL;
+    try {
+      await SPComponentLoader.loadScript(chartUrl, { globalExportsName: 'Chart' });
+    } catch (e) {
+      /* eslint-disable-next-line no-console */
+      console.error('Ops dashboard: Chart.js failed to load from ' + chartUrl, e);
+    }
   }
 
   public render(): void {
@@ -85,6 +93,10 @@ export default class OpsDashboardWebPart extends BaseClientSideWebPart<IOpsDashb
                 PropertyPaneTextField('notesListName', {
                   label: strings.NotesListFieldLabel,
                   description: 'Shared list where per-branch notes are saved (columns: Branch, Metric, Month, Note).'
+                }),
+                PropertyPaneTextField('chartJsUrl', {
+                  label: 'Chart.js library URL',
+                  description: 'Used by the charts. If your tenant blocks the public CDN, upload chart.umd.js to a library on this site and paste its URL. Leave blank to use the public CDN.'
                 })
               ]
             }

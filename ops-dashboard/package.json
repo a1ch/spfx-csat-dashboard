@@ -19,7 +19,6 @@
     "@microsoft/sp-loader": "1.18.2",
     "@microsoft/sp-lodash-subset": "1.18.2",
     "@microsoft/sp-office-ui-fabric-core": "1.18.2",
-    "chart.js": "4.4.1",
     "exceljs": "4.4.0",
     "tslib": "2.3.1"
   },

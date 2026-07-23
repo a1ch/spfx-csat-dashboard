@@ -18,7 +18,8 @@
     "properties": {
       "listSiteUrl": "",
       "workbookUrl": "",
-      "notesListName": "FY27 Ops Notes"
+      "notesListName": "FY27 Ops Notes",
+      "chartJsUrl": ""
     }
   }]
 }
