@@ -47,18 +47,28 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
     // one failing still leaves the other working.
     const chartUrl: string = (this.properties.chartJsUrl || '').trim() || CHARTJS_URL;
     const excelUrl: string = (this.properties.excelJsUrl || '').trim() || EXCELJS_URL;
-    await Promise.all([
-      SPComponentLoader.loadScript(chartUrl, { globalExportsName: 'Chart' })
-        .catch((e: unknown) => {
-          /* eslint-disable-next-line no-console */
-          console.error('CSAT dashboard: Chart.js failed to load from ' + chartUrl, e);
-        }),
-      SPComponentLoader.loadScript(excelUrl, { globalExportsName: 'ExcelJS' })
-        .catch((e: unknown) => {
-          /* eslint-disable-next-line no-console */
-          console.error('CSAT dashboard: ExcelJS failed to load from ' + excelUrl, e);
-        })
-    ]);
+
+    // Load the two UMD libraries SEQUENTIALLY, not in parallel. globalExportsName
+    // works by briefly suppressing the page's AMD loader while the script runs so
+    // its UMD wrapper assigns a real browser global instead of registering as an
+    // anonymous AMD module. Loading both at once let those suppression windows
+    // overlap: the smaller Chart.js finished and restored the AMD loader while
+    // the ~4.5x larger ExcelJS was still executing, so ExcelJS took the AMD path
+    // and never set window.ExcelJS — charts worked, Excel export didn't. Awaiting
+    // one before starting the next keeps each window isolated. ExcelJS goes first
+    // (the bigger, slower one) so it always runs in a clean environment.
+    try {
+      await SPComponentLoader.loadScript(excelUrl, { globalExportsName: 'ExcelJS' });
+    } catch (e) {
+      /* eslint-disable-next-line no-console */
+      console.error('CSAT dashboard: ExcelJS failed to load from ' + excelUrl, e);
+    }
+    try {
+      await SPComponentLoader.loadScript(chartUrl, { globalExportsName: 'Chart' });
+    } catch (e) {
+      /* eslint-disable-next-line no-console */
+      console.error('CSAT dashboard: Chart.js failed to load from ' + chartUrl, e);
+    }
   }
 
   public render(): void {
