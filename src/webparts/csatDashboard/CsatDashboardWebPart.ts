@@ -16,8 +16,13 @@ export interface ICsatDashboardWebPartProps {
   listSiteUrl: string;
   listName: string;
   autoRefreshSeconds: number;
+  chartJsUrl: string;
+  excelJsUrl: string;
 }
 
+// Public CDN defaults. If a tenant blocks the CDN (common for the larger
+// ExcelJS file), the URLs can be overridden in the property pane to point at a
+// same-tenant copy uploaded to e.g. Site Assets.
 const CHARTJS_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
 const EXCELJS_URL: string = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
 
@@ -28,24 +33,30 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
 
   protected async onInit(): Promise<void> {
     await super.onInit();
-    // Load Chart.js and ExcelJS once, from CDN. Both are UMD bundles, and the
-    // SharePoint page already has an AMD loader (define/require) present. Loaded
-    // as a plain script, the UMD wrapper registers as an anonymous AMD module
-    // instead of assigning window.Chart / window.ExcelJS — so the globals the
-    // dashboard checks for stay undefined (blank charts, failed Excel export).
-    // Passing globalExportsName makes SPComponentLoader suppress AMD during the
-    // load and capture the real browser global. Each loads independently so one
-    // failing (or a tenant blocking the CDN) still leaves the other working.
+    // Load Chart.js and ExcelJS once. Both are UMD bundles, and the SharePoint
+    // page already has an AMD loader (define/require) present. Loaded as a plain
+    // script, the UMD wrapper registers as an anonymous AMD module instead of
+    // assigning window.Chart / window.ExcelJS — so the globals the dashboard
+    // checks for stay undefined (blank charts, failed Excel export). Passing
+    // globalExportsName makes SPComponentLoader suppress AMD during the load and
+    // capture the real browser global.
+    //
+    // URLs default to the public CDN but can be overridden in the property pane
+    // with a same-tenant copy — needed when the tenant blocks the CDN (the
+    // 925 KB ExcelJS file is the usual casualty). Each loads independently so
+    // one failing still leaves the other working.
+    const chartUrl: string = (this.properties.chartJsUrl || '').trim() || CHARTJS_URL;
+    const excelUrl: string = (this.properties.excelJsUrl || '').trim() || EXCELJS_URL;
     await Promise.all([
-      SPComponentLoader.loadScript(CHARTJS_URL, { globalExportsName: 'Chart' })
+      SPComponentLoader.loadScript(chartUrl, { globalExportsName: 'Chart' })
         .catch((e: unknown) => {
           /* eslint-disable-next-line no-console */
-          console.error('CSAT dashboard: Chart.js failed to load', e);
+          console.error('CSAT dashboard: Chart.js failed to load from ' + chartUrl, e);
         }),
-      SPComponentLoader.loadScript(EXCELJS_URL, { globalExportsName: 'ExcelJS' })
+      SPComponentLoader.loadScript(excelUrl, { globalExportsName: 'ExcelJS' })
         .catch((e: unknown) => {
           /* eslint-disable-next-line no-console */
-          console.error('CSAT dashboard: ExcelJS failed to load', e);
+          console.error('CSAT dashboard: ExcelJS failed to load from ' + excelUrl, e);
         })
     ]);
   }
@@ -110,6 +121,20 @@ export default class CsatDashboardWebPart extends BaseClientSideWebPart<ICsatDas
                   max: 600,
                   step: 30,
                   showValue: true
+                })
+              ]
+            },
+            {
+              groupName: 'Script sources (advanced)',
+              isCollapsed: true,
+              groupFields: [
+                PropertyPaneTextField('excelJsUrl', {
+                  label: 'ExcelJS library URL',
+                  description: 'Used by Export → Excel. If your tenant blocks the public CDN, upload exceljs.min.js to a library on this site (e.g. Site Assets) and paste its full URL here. Leave blank to use the public CDN.'
+                }),
+                PropertyPaneTextField('chartJsUrl', {
+                  label: 'Chart.js library URL',
+                  description: 'Used by the dashboard charts. Same idea: upload chart.umd.js to this site and paste its URL if the CDN is blocked. Leave blank to use the public CDN.'
                 })
               ]
             }
