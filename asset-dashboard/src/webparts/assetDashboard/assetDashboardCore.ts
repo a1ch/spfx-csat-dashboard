@@ -5,7 +5,7 @@ import { IGlEntry, glKey } from './AssetGlService';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ExcelJS: any = require('exceljs/dist/exceljs.min.js');
 
-export const ASSET_DASHBOARD_VERSION: string = '1.0.2 · 2026-07-24';
+export const ASSET_DASHBOARD_VERSION: string = '1.0.3 · 2026-07-24';
 
 export interface IAssetDashboardOptions {
   fetchData: () => Promise<IAssetDataset>;
@@ -203,13 +203,21 @@ export function initAssetDashboard(root: HTMLElement, opts: IAssetDashboardOptio
         const val: string = t.value.trim();
         const existing: number | null = gl[k] ? gl[k].id : null;
         t.disabled = true;
+        t.style.borderColor = '';
         opts.saveGl(emp, item, serial, val, existing)
-          .then((id) => { gl[k] = { id: id, gl: val }; t.disabled = false; })
-          .catch(() => {
+          .then((id) => { gl[k] = { id: id, gl: val }; t.disabled = false; t.style.borderColor = '#0F6E56'; })
+          .catch((err) => {
             t.disabled = false;
+            const msg: string = (err && (err as Error).message) ? (err as Error).message : ('' + err);
             /* eslint-disable-next-line no-console */
-            console.error('Asset dashboard: could not save GL value — check list permissions');
+            console.error('Asset dashboard: GL save failed —', msg);
             t.style.borderColor = '#A32D2D';
+            t.title = msg;   // hover the red field to see the exact error
+            if (!(window as any).__astGlAlerted) {
+              (window as any).__astGlAlerted = true;
+              alert('Could not save GL / Cost Center:\n\n' + msg +
+                '\n\nCheck that the GL list exists on this site with columns Employee, Item, Serial, GL, and that you have edit access.');
+            }
           });
       });
     });

@@ -51,21 +51,29 @@ export async function saveGlOverride(
 ): Promise<number | null> {
   const site: string = siteUrl.replace(/\/$/, '');
   const base: string = `${site}/_api/web/lists/getByTitle('${encodeURIComponent(listName)}')/items`;
-  const body: string = JSON.stringify({ Employee: emp, Item: item, Serial: serial, GL: gl });
+  // Title is required by default on SharePoint lists — set it so create works.
+  const title: string = `${emp} — ${item}`.slice(0, 255);
+  const body: string = JSON.stringify({ Title: title, Employee: emp, Item: item, Serial: serial, GL: gl });
 
   const headers: any = {
     'Accept': 'application/json;odata=nometadata',
     'Content-Type': 'application/json;odata=nometadata'
   };
+  async function fail(res: SPHttpClientResponse): Promise<Error> {
+    const t: string = await res.text().catch(() => '');
+    let detail: string = '';
+    try { const j: any = JSON.parse(t); detail = (j && (j['odata.error'] || j.error) || {}).message; if (detail && detail.value) { detail = detail.value; } } catch (e) { detail = t.slice(0, 200); }
+    return new Error(`Save failed (${res.status}) ${detail || ''}`.trim());
+  }
   if (existingId) {
     const res: SPHttpClientResponse = await spHttpClient.post(
       `${base}(${existingId})`, SPHttpClient.configurations.v1,
       { headers: { ...headers, 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' }, body });
-    if (!res.ok) { throw new Error(`Save failed (${res.status}).`); }
+    if (!res.ok) { throw await fail(res); }
     return existingId;
   }
   const res: SPHttpClientResponse = await spHttpClient.post(base, SPHttpClient.configurations.v1, { headers, body });
-  if (!res.ok) { throw new Error(`Save failed (${res.status}).`); }
+  if (!res.ok) { throw await fail(res); }
   const data: any = await res.json().catch(() => ({}));
   return data && data.Id ? Number(data.Id) : null;
 }
