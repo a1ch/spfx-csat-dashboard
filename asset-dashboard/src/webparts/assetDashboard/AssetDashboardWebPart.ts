@@ -65,8 +65,7 @@ export default class AssetDashboardWebPart extends BaseClientSideWebPart<IAssetD
               groupFields: [
                 PropertyPaneTextField('formsFolderUrl', {
                   label: strings.FormsFolderFieldLabel,
-                  description: 'URL of the folder holding the Equipment Asset Allocation forms (e.g. https://…/SiteAssets/AssetForms). Every .xlsx in it is parsed. The "Upload form" button opens this folder.',
-                  multiline: true
+                  description: 'URL of the folder holding the Equipment Asset Allocation forms (e.g. https://…/SiteAssets/AssetForms). Every .xlsx in it is parsed. The "Upload form" button opens this folder.'
                 }),
                 PropertyPaneTextField('listSiteUrl', {
                   label: strings.SiteUrlFieldLabel,
