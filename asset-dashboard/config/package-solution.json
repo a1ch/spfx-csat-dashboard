@@ -1,0 +1,30 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "spfx-asset-dashboard-client-side-solution",
+    "id": "16236dd7-ca54-4a4c-9249-ae5a7f128c5f",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "Stream-Flo / Streamflo Group",
+      "websiteUrl": "https://streamflogroup.sharepoint.com",
+      "privacyUrl": "", "termsOfUseUrl": "", "mpnId": ""
+    },
+    "metadata": {
+      "shortDescription": { "default": "IT Equipment asset dashboard built from allocation forms in a SharePoint folder." },
+      "longDescription": { "default": "Reads every Equipment Asset Allocation form (.xlsx) from a SharePoint folder, parses employees, items, prices and classes, and renders a filterable equipment dashboard with a styled Excel asset-log export." },
+      "screenshotPaths": [], "videoUrl": "", "categories": []
+    },
+    "features": [
+      {
+        "title": "spfx-asset-dashboard Feature",
+        "description": "The feature that activates elements of the spfx-asset-dashboard solution.",
+        "id": "6233ad9d-7fda-4ab6-982f-b137a3dce5b3",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": { "zippedPackage": "solution/spfx-asset-dashboard.sppkg" }
+}

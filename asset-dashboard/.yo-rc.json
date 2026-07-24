@@ -1,0 +1,13 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "isCreatingSolution": true,
+    "environment": "spo",
+    "version": "1.18.2",
+    "libraryName": "spfx-asset-dashboard",
+    "libraryId": "16236dd7-ca54-4a4c-9249-ae5a7f128c5f",
+    "packageManager": "npm",
+    "isDomainIsolated": false,
+    "componentType": "webpart",
+    "framework": "none"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "asset-dashboard-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/assetDashboard/AssetDashboardWebPart.js",
+          "manifest": "./src/webparts/assetDashboard/AssetDashboardWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "AssetDashboardWebPartStrings": "lib/webparts/assetDashboard/loc/{locale}.js"
+  }
+}

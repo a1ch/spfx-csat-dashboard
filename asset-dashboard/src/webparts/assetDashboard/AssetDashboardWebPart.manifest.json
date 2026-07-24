@@ -1,0 +1,24 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "f8ff2c78-a777-47fe-9b15-88031d00eb3d",
+  "alias": "AssetDashboardWebPart",
+  "componentType": "WebPart",
+  "version": "*",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "supportedHosts": ["SharePointWebPart", "SharePointFullPage"],
+  "supportsThemeVariants": true,
+
+  "preconfiguredEntries": [{
+    "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
+    "group": { "default": "Advanced" },
+    "title": { "default": "IT Equipment Asset Dashboard" },
+    "description": { "default": "Reads Equipment Asset Allocation forms from a SharePoint folder and shows equipment, costs and assignments." },
+    "officeFabricIconFontName": "Devices3",
+    "properties": {
+      "listSiteUrl": "",
+      "formsFolderUrl": "",
+      "glListName": "Asset GL Overrides"
+    }
+  }]
+}

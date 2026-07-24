@@ -1,0 +1,35 @@
+name: Build Asset SPFx package
+
+on:
+  push:
+    branches: [ 'claude/sharepoint-export-csat-fix-97c128' ]
+    paths:
+      - 'asset-dashboard/**'
+      - '.github/workflows/build-asset.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: asset-dashboard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.17.1'
+      - name: Install dependencies
+        run: npm install
+      - name: Bundle (ship)
+        run: npx gulp bundle --ship
+      - name: Package solution (ship)
+        run: npx gulp package-solution --ship
+      - name: Upload .sppkg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spfx-asset-dashboard-sppkg
+          path: asset-dashboard/sharepoint/solution/*.sppkg
+          if-no-files-found: error
