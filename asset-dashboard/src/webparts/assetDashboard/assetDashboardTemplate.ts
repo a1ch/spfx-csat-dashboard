@@ -78,17 +78,17 @@ export const ASSET_DASHBOARD_HTML: string = `
       <div class="h-sub" data-el="headerSub">Built from the Equipment Asset Allocation forms</div>
     </div>
     <div class="h-actions">
-      <button class="hbtn" data-el="refreshBtn" title="Re-read the forms folder">&#8635; Refresh</button>
+      <button type="button" class="hbtn" data-el="refreshBtn" title="Re-read the forms folder">&#8635; Refresh</button>
       <a class="hbtn accent" data-el="uploadBtn" target="_blank" rel="noopener" title="Open the forms folder to upload a new allocation form">&#10514; Upload form</a>
-      <button class="hbtn" data-el="exportBtn" title="Download the styled Excel asset log">&#8681; Excel log</button>
+      <button type="button" class="hbtn" data-el="exportBtn" title="Download the styled Excel asset log">&#8681; Excel log</button>
     </div>
   </header>
 
   <div class="tabs">
-    <button class="tab active" data-tab="dash">Dashboard</button>
-    <button class="tab" data-tab="items">Items</button>
-    <button class="tab" data-tab="emps">Employees</button>
-    <button class="tab" data-tab="forms">Forms</button>
+    <button type="button" class="tab active" data-tab="dash">Dashboard</button>
+    <button type="button" class="tab" data-tab="items">Items</button>
+    <button type="button" class="tab" data-tab="emps">Employees</button>
+    <button type="button" class="tab" data-tab="forms">Forms</button>
   </div>
 
   <div class="filters">
@@ -99,7 +99,7 @@ export const ASSET_DASHBOARD_HTML: string = `
     <select data-el="fCls"><option value="">All classes</option></select>
     <select data-el="fYear"><option value="">All years</option></select>
     <input type="search" data-el="fQ" placeholder="Search item, serial, PO, ticket&hellip;">
-    <button class="lnk" data-el="fReset">Reset</button>
+    <button type="button" class="lnk" data-el="fReset">Reset</button>
     <span class="flabel" data-el="fCount"></span>
   </div>
 

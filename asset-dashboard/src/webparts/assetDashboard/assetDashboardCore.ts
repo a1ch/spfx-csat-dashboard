@@ -5,7 +5,7 @@ import { IGlEntry, glKey } from './AssetGlService';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ExcelJS: any = require('exceljs/dist/exceljs.min.js');
 
-export const ASSET_DASHBOARD_VERSION: string = '1.0.1 · 2026-07-24';
+export const ASSET_DASHBOARD_VERSION: string = '1.0.2 · 2026-07-24';
 
 export interface IAssetDashboardOptions {
   fetchData: () => Promise<IAssetDataset>;
@@ -27,6 +27,17 @@ export function initAssetDashboard(root: HTMLElement, opts: IAssetDashboardOptio
 
   const verEl = root.querySelector('[data-el="appVersion"]');
   if (verEl) { verEl.textContent = 'v' + ASSET_DASHBOARD_VERSION; }
+
+  // Classic SharePoint pages wrap the web part in an ASP.NET <form>. Pressing
+  // Enter in a text field would submit it and reload the page, so swallow Enter
+  // on our inputs (change/blur handlers still fire).
+  root.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement;
+    if ((e as KeyboardEvent).key === 'Enter' && t && (t.tagName === 'INPUT' || t.tagName === 'SELECT')) {
+      e.preventDefault();
+      (t as HTMLElement).blur();
+    }
+  });
 
   // ---- helpers -------------------------------------------------------------
   function esc(s: unknown): string {
