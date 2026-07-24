@@ -62,7 +62,11 @@ export async function saveGlOverride(
   async function fail(res: SPHttpClientResponse): Promise<Error> {
     const t: string = await res.text().catch(() => '');
     let detail: string = '';
-    try { const j: any = JSON.parse(t); detail = (j && (j['odata.error'] || j.error) || {}).message; if (detail && detail.value) { detail = detail.value; } } catch (e) { detail = t.slice(0, 200); }
+    try {
+      const j: any = JSON.parse(t);
+      const m: any = (j && (j['odata.error'] || j.error) || {}).message;
+      detail = (m && typeof m === 'object' && m.value) ? String(m.value) : (m ? String(m) : '');
+    } catch (e) { detail = t.slice(0, 200); }
     return new Error(`Save failed (${res.status}) ${detail || ''}`.trim());
   }
   if (existingId) {
