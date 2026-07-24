@@ -5,7 +5,7 @@ import { IGlEntry, glKey } from './AssetGlService';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ExcelJS: any = require('exceljs/dist/exceljs.min.js');
 
-export const ASSET_DASHBOARD_VERSION: string = '1.0.3 · 2026-07-24';
+export const ASSET_DASHBOARD_VERSION: string = '1.0.4 · 2026-07-24';
 
 export interface IAssetDashboardOptions {
   fetchData: () => Promise<IAssetDataset>;
